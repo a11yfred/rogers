@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { mountFocusDebugger }      from './overlay/focus.js'
 import { mountNamesDebugger }      from './overlay/names.js'
 import { mountHeadingMapDebugger } from './overlay/headings.js'
@@ -9,80 +8,88 @@ import { mountDeployBanner }       from './overlay/banner.js'
 
 const IS_DEV = import.meta.env.DEV
 
-function useOverlay(mountFn, enabled, deps) {
-  useEffect(() => {
-    if (!IS_DEV || !enabled) return
-    const overlay = mountFn()
-    return () => overlay.destroy()
-  // deps passed by caller
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
-}
+// React is passed in by the caller — no top-level React import.
+// Usage: import { createComponents } from '@a11yfred/rogers/react'
+//        const { FocusDebugger } = createComponents(React)
+export function createComponents({ useEffect, useRef }) {
 
-export function FocusDebugger({ enabled = true }) {
-  useOverlay(() => mountFocusDebugger(), enabled, [enabled])
-  return null
-}
+  function useOverlay(mountFn, enabled, deps) {
+    useEffect(() => {
+      if (!IS_DEV || !enabled) return
+      const overlay = mountFn()
+      return () => overlay.destroy()
+      // deps passed by caller
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, deps)
+  }
 
-export function NamesDebugger({ enabled = true }) {
-  useOverlay(() => mountNamesDebugger(), enabled, [enabled])
-  return null
-}
+  function FocusDebugger({ enabled = true }) {
+    useOverlay(() => mountFocusDebugger(), enabled, [enabled])
+    return null
+  }
 
-export function HeadingMapDebugger({ enabled = false }) {
-  useOverlay(() => mountHeadingMapDebugger(), enabled, [enabled])
-  return null
-}
+  function NamesDebugger({ enabled = true }) {
+    useOverlay(() => mountNamesDebugger(), enabled, [enabled])
+    return null
+  }
 
-export function TabStopsDebugger({ enabled = false }) {
-  useOverlay(() => mountTabStopsDebugger(), enabled, [enabled])
-  return null
-}
+  function HeadingMapDebugger({ enabled = false }) {
+    useOverlay(() => mountHeadingMapDebugger(), enabled, [enabled])
+    return null
+  }
 
-export function DebugLauncher({ enabled = false, position = 'bottom-right', onCommand, customSections = [] }) {
-  useOverlay(
-    () => mountDebugLauncher({ position, onCommand, customSections }),
-    enabled,
-    [enabled, position, onCommand, customSections],
-  )
-  return null
-}
+  function TabStopsDebugger({ enabled = false }) {
+    useOverlay(() => mountTabStopsDebugger(), enabled, [enabled])
+    return null
+  }
 
-export function DebugHelp({ open, onClose, customCommands = [] }) {
-  const panelRef = useRef(null)
+  function DebugLauncher({ enabled = false, position = 'bottom-right', onCommand, customSections = [] }) {
+    useOverlay(
+      () => mountDebugLauncher({ position, onCommand, customSections }),
+      enabled,
+      [enabled, position, onCommand, customSections],
+    )
+    return null
+  }
 
-  useEffect(() => {
-    if (!IS_DEV) return
-    const panel = mountDebugHelp({ onClose, customCommands })
-    panelRef.current = panel
-    return () => { panel.destroy(); panelRef.current = null }
-  // customCommands is a stable reference from caller
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onClose])
+  function DebugHelp({ open, onClose, customCommands = [] }) {
+    const panelRef = useRef(null)
 
-  useEffect(() => {
-    if (!IS_DEV) return
-    if (open) panelRef.current?.open()
-    else panelRef.current?.close()
-  }, [open])
+    useEffect(() => {
+      if (!IS_DEV) return
+      const panel = mountDebugHelp({ onClose, customCommands })
+      panelRef.current = panel
+      return () => { panel.destroy(); panelRef.current = null }
+      // customCommands is a stable reference from caller
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [onClose])
 
-  return null
-}
+    useEffect(() => {
+      if (!IS_DEV) return
+      if (open) panelRef.current?.open()
+      else panelRef.current?.close()
+    }, [open])
 
-export function DeployBanner({ target }) {
-  const bannerRef = useRef(null)
+    return null
+  }
 
-  useEffect(() => {
-    if (!IS_DEV) return
-    const banner = mountDeployBanner(target)
-    bannerRef.current = banner
-    return () => { banner.destroy(); bannerRef.current = null }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  function DeployBanner({ target }) {
+    const bannerRef = useRef(null)
 
-  useEffect(() => {
-    bannerRef.current?.setTarget(target)
-  }, [target])
+    useEffect(() => {
+      if (!IS_DEV) return
+      const banner = mountDeployBanner(target)
+      bannerRef.current = banner
+      return () => { banner.destroy(); bannerRef.current = null }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
-  return null
+    useEffect(() => {
+      bannerRef.current?.setTarget(target)
+    }, [target])
+
+    return null
+  }
+
+  return { FocusDebugger, NamesDebugger, HeadingMapDebugger, TabStopsDebugger, DebugLauncher, DebugHelp, DeployBanner }
 }
