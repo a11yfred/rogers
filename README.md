@@ -1,8 +1,6 @@
 # @a11yfred/rogers
 
-Vanilla-first accessibility debug panel with a thin React wrapper.
-
-The React Query DevTools of accessibility. Drop it into any project, see focus, names, and contrast in real time.
+Rogers is an accessibility debug panel for testing and development. Drop it into any project to see keyboard focus, accessible names, heading structure, and tab order in real time. No framework required, no dependencies needed. It works with React, Vue, Angular, and Remix. Rogers only runs in development and does nothing in production. More planned soon.
 
 ## Packages
 
