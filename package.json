@@ -1,0 +1,19 @@
+{
+  "name": "@a11yfred/rogers",
+  "version": "0.0.0",
+  "description": "Vanilla-first accessibility debug panel and browser extension. Always look for the helpers.",
+  "type": "module",
+  "private": true,
+  "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vanilla", "a11yfred"],
+  "license": "MIT",
+  "exports": {
+    ".": "./index.js",
+    "./react": "./react.js"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  }
+}
