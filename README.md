@@ -241,3 +241,7 @@ Import `debug.css` once. It covers all components and overlays. The styles are s
 ## License
 
 MIT
+
+---
+
+*Built with help from Claude.*
