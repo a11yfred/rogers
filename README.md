@@ -2,92 +2,53 @@
 
 Rogers is an accessibility debug panel for testing and development. Drop it into any project to see keyboard focus, accessible names, heading structure, and tab order in real time. No framework required, no dependencies needed. It works with React, Vue, Angular, and Remix. Rogers only runs in development and does nothing in production. More planned soon.
 
-## Packages
+## Install
 
-rogers is one of four ulam packages:
-
-```text
-ulam
-├── @ulam/ube          sweet   — UI, components, CSS, theming, router, announce
-├── @ulam/calamansi    sour    — i18n, hooks, utilities, logic
-├── @a11yfred/rogers        savory  — a11y debug panel, vanilla-first  ← you are here
-└── @ulam/sawsawan     bridge  — wires the three together
+```bash
+npm install --save-dev @a11yfred/rogers
 ```
 
-## Architecture
+## How it works
 
-Vanilla-first: core inspection logic has no framework dependency. React is a thin mount/unmount wrapper.
+Rogers has two layers:
+
+- **Core** — plain JavaScript functions that watch the DOM. No framework needed.
+- **Adapters** — thin wrappers for React, Vue, Angular, and Remix that wire the core into your framework's lifecycle.
+
+Each adapter takes your framework's own hooks as parameters. Rogers never imports a framework itself, so it adds nothing to your bundle.
+
+All watcher functions check `import.meta.env.DEV` at startup. In a production build they return immediately and do nothing.
+
+## File structure
 
 ```text
 @a11yfred/rogers
 ├── core/
-│   ├── focus.js      — formatTarget, getOutlineInfo, flashElement, createFocusWatcher
-│   ├── names.js      — isControl, getAccessibleName, createNamesWatcher
-│   ├── headings.js   — collectHeadings, createHeadingWatcher
-│   └── tabstops.js   — isTabbable, getTabOrder, createTabStopWatcher
-├── react/            — thin React wrappers (useEffect → create*Watcher)
-│   ├── FocusDebugger.jsx
-│   ├── NamesDebugger.jsx
-│   ├── HeadingMapDebugger.jsx
-│   └── TabStopsDebugger.jsx
-├── DeployBanner.jsx  — pure-render React (no DOM watcher)
-├── DebugHelp.jsx     — pure-render React
-└── DebugLauncher.jsx — React FAB + command input
+│   ├── focus.js      — focus tracking
+│   ├── names.js      — accessible name lookup
+│   ├── headings.js   — heading collection
+│   └── tabstops.js   — tab order
+├── overlay/          — DOM overlay renderers (no framework)
+├── index.js          — vanilla exports
+├── react.js          — React / Remix 2 adapter
+├── vue.js            — Vue adapter
+├── angular.js        — Angular adapter
+├── remix3.js         — Remix 3 / vanilla adapter
+└── debug.css         — styles for all overlays
 ```
-
-The `create*Watcher` functions follow a common pattern:
-
-```js
-const watcher = createFocusWatcher(callback)
-// ...later:
-watcher.destroy()
-```
-
-They are dev-only: each function checks `import.meta.env.DEV` and returns a no-op `{ destroy() {} }` in production.
-
----
-
-## Exports
-
-### React components
-
-| Export | Description |
-| ------ | ----------- |
-| `FocusDebugger` | Keyboard focus toast + element flash on every focus event |
-| `NamesDebugger` | Cursor-following tooltip showing accessible name of hovered element |
-| `TabStopsDebugger` | Numbered overlay + SVG lines recording keyboard tab order |
-| `HeadingMapDebugger` | Heading outline overlay + floating hierarchy panel |
-| `DeployBanner` | Fixed bottom-left banner showing active deployment target |
-| `DebugHelp` | Full command reference panel |
-| `DebugLauncher` | FAB + spotlight input for projects without a built-in command field |
-
-### Vanilla core
-
-| Export | Description |
-| ------ | ----------- |
-| `createFocusWatcher(onToast)` | Attaches `focusin` listener; calls `onToast({ label, hasFocusOutline, isFocusVisible })` |
-| `createNamesWatcher(onTooltip, onClear)` | Mouse listeners; calls `onTooltip({ name, source, x, y })` |
-| `createHeadingWatcher(onHeadings)` | ResizeObserver + scroll; calls `onHeadings(headings[])` |
-| `createTabStopWatcher(onStop, onClear)` | `focusin` listener; calls `onStop({ seq, cx, cy, label })` |
-| `formatTarget(el)` | Returns `<tag.class>` string for an element |
-| `getOutlineInfo(el)` | Returns `{ hasFocusOutline, isFocusVisible }` |
-| `flashElement(el)` | Briefly overlays the element with a teal flash |
-| `isControl(el)` | Returns true if element is an interactive control |
-| `getAccessibleName(el)` | Returns `{ name, source }` — the ARIA accessible name + its source |
-| `collectHeadings()` | Returns an array of heading metadata objects |
-| `isTabbable(el)` | Returns true if element is in the natural tab order |
-| `getTabOrder()` | Returns all tabbable elements in tab order |
-
----
 
 ## Framework integration
 
-Each adapter injects framework primitives rather than importing them — so rogers itself has zero framework dependencies.
+Import `debug.css` once in your app entry point.
+
+```js
+import '@a11yfred/rogers/debug.css'
+```
 
 ### React / Remix 2
 
 ```jsx
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createComponents } from '@a11yfred/rogers/react'
 
 const {
@@ -121,7 +82,7 @@ export default function Root() {
 
 ### Remix 3
 
-Remix 3 drops React as a hard dependency. Use the vanilla adapter in your client entry point:
+Remix 3 does not require React. Use the vanilla adapter in your client entry point.
 
 ```js
 // app/entry.client.js
@@ -129,12 +90,12 @@ import { rogers } from '@a11yfred/rogers/remix3'
 import '@a11yfred/rogers/debug.css'
 
 const debug = rogers({
-  focus:   true,
-  names:   true,
-  deploy:  'netlify',
+  focus:    true,
+  names:    true,
+  deploy:   'netlify',
   launcher: {
     onCommand(cmd) {
-      if (cmd === 'debug names') debug // handle via your own state
+      // handle commands via your own state
     },
   },
 })
@@ -156,13 +117,15 @@ const { useFocusDebugger, useNamesDebugger, useDebugLauncher } =
   createComposables({ onMounted, onUnmounted, watch, ref })
 ```
 
-Then in a component:
+In a component:
 
 ```vue
 <script setup>
 import { ref } from 'vue'
+
 const focusEnabled = ref(true)
 const namesEnabled = ref(false)
+
 useFocusDebugger(focusEnabled)
 useNamesDebugger(namesEnabled)
 useDebugLauncher({
@@ -185,7 +148,7 @@ const { FocusDebuggerService, NamesDebuggerService, DebugLauncherService } =
   createServices({ DestroyRef, inject })
 ```
 
-Provide and inject in a root component:
+In a root component:
 
 ```ts
 @Component({
@@ -193,8 +156,8 @@ Provide and inject in a root component:
   providers: [FocusDebuggerService, NamesDebuggerService, DebugLauncherService],
 })
 export class AppComponent implements OnInit {
-  private focus   = inject(FocusDebuggerService)
-  private names   = inject(NamesDebuggerService)
+  private focus    = inject(FocusDebuggerService)
+  private names    = inject(NamesDebuggerService)
   private launcher = inject(DebugLauncherService)
 
   ngOnInit() {
@@ -209,19 +172,15 @@ export class AppComponent implements OnInit {
 }
 ```
 
-### Vanilla JS (script tag / no framework)
-
-Use the watcher factories directly. Wire them to your own DOM or to nothing — just inspect:
+### Vanilla JS
 
 ```js
 import { createFocusWatcher, createNamesWatcher } from '@a11yfred/rogers'
 
-// Log focus events to the console
 const focus = createFocusWatcher(({ label, isFocusVisible }) => {
   console.log(`[focus] ${label} | :focus-visible ${isFocusVisible ? '✓' : '✗'}`)
 })
 
-// Log accessible names on hover
 const names = createNamesWatcher(
   ({ name, source }) => console.log(`[name] ${name} (${source})`),
   () => {},
@@ -232,29 +191,52 @@ focus.destroy()
 names.destroy()
 ```
 
----
+## Vanilla API
+
+| Export | Description |
+| ------ | ----------- |
+| `createFocusWatcher(onToast)` | Watches focus events. Calls `onToast({ label, hasFocusOutline, isFocusVisible })` |
+| `createNamesWatcher(onTooltip, onClear)` | Watches mouse hover. Calls `onTooltip({ name, source, x, y })` |
+| `createHeadingWatcher(onHeadings)` | Watches scroll and resize. Calls `onHeadings(headings[])` |
+| `createTabStopWatcher(onStop, onClear)` | Watches tab keypresses. Calls `onStop({ seq, cx, cy, label })` |
+| `formatTarget(el)` | Returns a `<tag.class>` string for an element |
+| `getOutlineInfo(el)` | Returns `{ hasFocusOutline, isFocusVisible }` |
+| `flashElement(el)` | Briefly highlights the element |
+| `isControl(el)` | Returns true if the element is interactive |
+| `getAccessibleName(el)` | Returns `{ name, source }` |
+| `collectHeadings()` | Returns all headings on the page with metadata |
+| `isTabbable(el)` | Returns true if the element is in the tab order |
+| `getTabOrder()` | Returns all tabbable elements in order |
+
+## React components
+
+These are returned by `createComponents({ useEffect, useRef })`.
+
+| Component | Description |
+| --------- | ----------- |
+| `FocusDebugger` | Shows a toast and flashes the element on every focus event |
+| `NamesDebugger` | Shows a tooltip with the accessible name of the hovered element |
+| `TabStopsDebugger` | Numbered overlay showing the tab order |
+| `HeadingMapDebugger` | Overlay showing heading structure |
+| `DeployBanner` | Fixed banner showing the active deployment target |
+| `DebugHelp` | Full command reference panel |
+| `DebugLauncher` | Floating button and command input |
 
 ## Debug commands
 
-Type in the search bar (live search on) or submit (live search off):
+These work in the `DebugLauncher` command input.
 
 | Command | Effect |
 | ------- | ------ |
-| `debug help` | Show the full command reference panel |
-| `debug all on` | Enable focus toast and announce visualization |
-| `debug all off` | Disable focus toast and announce visualization |
-| `debug names on` | Show accessible name tooltip on hover |
+| `debug help` | Show the command reference panel |
+| `debug all on` | Enable focus and names |
+| `debug all off` | Disable focus and names |
+| `debug names on` | Show accessible name tooltip |
 | `debug names off` | Hide accessible name tooltip |
-
----
 
 ## CSS
 
-All styles live in `debug.css`. Import it once — it covers all components.
-
-rogers CSS is self-contained and opinionated (dark, high contrast). No ube token dependency — looks the same regardless of host app theme.
-
----
+Import `debug.css` once. It covers all components and overlays. The styles are self-contained and work regardless of your app's theme.
 
 ## License
 
