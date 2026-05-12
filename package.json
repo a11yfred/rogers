@@ -1,11 +1,18 @@
 {
   "name": "@a11yfred/rogers",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Vanilla-first accessibility debug panel. Always look for the helpers.",
   "type": "module",
-  "private": true,
-  "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vue", "angular", "remix", "vanilla", "a11yfred"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a11yfred/rogers.git"
+  },
+  "homepage": "https://github.com/a11yfred/rogers#readme",
+  "bugs": {
+    "url": "https://github.com/a11yfred/rogers/issues"
+  },
+  "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vue", "angular", "remix", "vanilla", "a11yfred"],
   "exports": {
     ".":          "./index.js",
     "./react":    "./react.js",
