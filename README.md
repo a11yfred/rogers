@@ -34,9 +34,7 @@ Vanilla-first: core inspection logic has no framework dependency. React is a thi
 │   └── TabStopsDebugger.jsx
 ├── DeployBanner.jsx  — pure-render React (no DOM watcher)
 ├── DebugHelp.jsx     — pure-render React
-├── DebugLauncher.jsx — React FAB + command input
-├── AdminPanel.jsx    — app-specific (a11yfred)
-└── AiDebugToast.jsx  — app-specific (a11yfred)
+└── DebugLauncher.jsx — React FAB + command input
 ```
 
 The `create*Watcher` functions follow a common pattern:
@@ -282,18 +280,6 @@ const names = createNamesWatcher(
 focus.destroy()
 names.destroy()
 ```
-
----
-
-## App-specific exports (not part of @a11yfred/rogers)
-
-These live in this folder but are a11yfred-specific:
-
-| Export | Description |
-| ------ | ----------- |
-| `AiDebugToast` | Toast for AI assist toggle (wired to a11yfred AI service) |
-| `useAiDebugToast` | State + timer logic for AiDebugToast |
-| `AdminPanel` | Admin corpus management panel (a11yfred data wiring) |
 
 ---
 
