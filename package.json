@@ -4,10 +4,13 @@
   "description": "Vanilla-first accessibility debug panel. Always look for the helpers.",
   "type": "module",
   "private": true,
-  "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vanilla", "a11yfred"],
+  "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vue", "angular", "remix", "vanilla", "a11yfred"],
   "license": "MIT",
   "exports": {
-    ".": "./index.js",
-    "./react": "./react.js"
+    ".":          "./index.js",
+    "./react":    "./react.js",
+    "./vue":      "./vue.js",
+    "./angular":  "./angular.js",
+    "./remix3":   "./remix3.js"
   }
 }

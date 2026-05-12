@@ -84,17 +84,18 @@ They are dev-only: each function checks `import.meta.env.DEV` and returns a no-o
 
 ## Framework integration
 
-### React / Remix
+Each adapter injects framework primitives rather than importing them — so rogers itself has zero framework dependencies.
 
-Use the pre-built React components. Render them once near the root — they are dev-only and render nothing in production.
+### React / Remix 2
 
 ```jsx
-// app/root.jsx (Remix) or src/App.jsx (Vite)
-import {
-  FocusDebugger,
-  NamesDebugger,
-  DeployBanner,
-} from '@a11yfred/rogers'
+import { useEffect, useRef } from 'react'
+import { createComponents } from '@a11yfred/rogers/react'
+
+const {
+  FocusDebugger, NamesDebugger, DeployBanner,
+  DebugLauncher, DebugHelp, TabStopsDebugger, HeadingMapDebugger,
+} = createComponents({ useEffect, useRef })
 
 export default function Root() {
   const [debugFocus, setDebugFocus] = useState(false)
@@ -106,64 +107,55 @@ export default function Root() {
       <FocusDebugger enabled={debugFocus} />
       <NamesDebugger enabled={debugNames} />
       <DeployBanner target="netlify" />
+      <DebugLauncher
+        enabled
+        onCommand={(cmd) => {
+          if (cmd === 'debug names')     setDebugNames(true)
+          if (cmd === 'debug names off') setDebugNames(false)
+          if (cmd === 'debug all')       { setDebugFocus(true); setDebugNames(true) }
+          if (cmd === 'debug all off')   { setDebugFocus(false); setDebugNames(false) }
+        }}
+      />
     </>
   )
 }
 ```
 
-For `DebugLauncher`, wire `onCommand` to your state setters:
+### Remix 3
 
-```jsx
-<DebugLauncher
-  enabled
-  onCommand={(cmd) => {
-    if (cmd === 'debug names') setDebugNames(true)
-    if (cmd === 'debug names off') setDebugNames(false)
-    if (cmd === 'debug all') { setDebugFocus(true); setDebugNames(true) }
-    if (cmd === 'debug all off') { setDebugFocus(false); setDebugNames(false) }
-  }}
-/>
+Remix 3 drops React as a hard dependency. Use the vanilla adapter in your client entry point:
+
+```js
+// app/entry.client.js
+import { rogers } from '@a11yfred/rogers/remix3'
+import '@a11yfred/rogers/debug.css'
+
+const debug = rogers({
+  focus:   true,
+  names:   true,
+  deploy:  'netlify',
+  launcher: {
+    onCommand(cmd) {
+      if (cmd === 'debug names') debug // handle via your own state
+    },
+  },
+})
+
+// HMR cleanup
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => debug.destroy())
+}
 ```
 
 ### Vue
 
-Use the vanilla core directly. Create composables that wrap `create*Watcher`:
-
 ```js
-// composables/useRogers.js
-import { ref, onMounted, onUnmounted } from 'vue'
-import { createFocusWatcher, createNamesWatcher } from '@a11yfred/rogers'
+import { onMounted, onUnmounted, watch, ref } from 'vue'
+import { createComposables } from '@a11yfred/rogers/vue'
+import '@a11yfred/rogers/debug.css'
 
-export function useFocusDebugger(enabled) {
-  const toast = ref(null)
-  let watcher = null
-
-  onMounted(() => {
-    if (!enabled.value) return
-    watcher = createFocusWatcher((data) => { toast.value = data })
-  })
-
-  onUnmounted(() => watcher?.destroy())
-
-  return { toast }
-}
-
-export function useNamesDebugger(enabled) {
-  const tooltip = ref(null)
-  let watcher = null
-
-  onMounted(() => {
-    if (!enabled.value) return
-    watcher = createNamesWatcher(
-      (data) => { tooltip.value = data },
-      () => { tooltip.value = null },
-    )
-  })
-
-  onUnmounted(() => watcher?.destroy())
-
-  return { tooltip }
-}
+const { useFocusDebugger, useNamesDebugger, useDebugLauncher } =
+  createComposables({ onMounted, onUnmounted, watch, ref })
 ```
 
 Then in a component:
@@ -171,91 +163,52 @@ Then in a component:
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { useFocusDebugger } from './composables/useRogers'
-
-const enabled = ref(true)
-const { toast } = useFocusDebugger(enabled)
+const focusEnabled = ref(true)
+const namesEnabled = ref(false)
+useFocusDebugger(focusEnabled)
+useNamesDebugger(namesEnabled)
+useDebugLauncher({
+  enabled: ref(true),
+  onCommand(cmd) {
+    if (cmd === 'debug names')     namesEnabled.value = true
+    if (cmd === 'debug names off') namesEnabled.value = false
+  },
+})
 </script>
-
-<template>
-  <div v-if="toast" class="focus-toast" aria-hidden="true">
-    <code>{{ toast.label }}</code>
-    <span>:focus-visible {{ toast.isFocusVisible ? '✓' : '✗' }}</span>
-  </div>
-</template>
-```
-
-Import `debug.css` once in your app entry:
-
-```js
-import '@a11yfred/rogers/debug.css'
 ```
 
 ### Angular
 
-Use the vanilla core in Angular services:
-
 ```ts
-// debug.service.ts
-import { Injectable, OnDestroy } from '@angular/core'
-import { BehaviorSubject } from 'rxjs'
-import { createFocusWatcher, createNamesWatcher } from '@a11yfred/rogers'
+import { inject, DestroyRef } from '@angular/core'
+import { createServices } from '@a11yfred/rogers/angular'
 
-@Injectable({ providedIn: 'root' })
-export class DebugService implements OnDestroy {
-  toast$ = new BehaviorSubject<{ label: string; hasFocusOutline: boolean; isFocusVisible: boolean } | null>(null)
-  tooltip$ = new BehaviorSubject<{ name: string; source: string; x: number; y: number } | null>(null)
-
-  private focusWatcher: { destroy(): void } | null = null
-  private namesWatcher: { destroy(): void } | null = null
-
-  enableFocus() {
-    this.focusWatcher?.destroy()
-    this.focusWatcher = createFocusWatcher((data) => this.toast$.next(data))
-  }
-
-  enableNames() {
-    this.namesWatcher?.destroy()
-    this.namesWatcher = createNamesWatcher(
-      (data) => this.tooltip$.next(data),
-      () => this.tooltip$.next(null),
-    )
-  }
-
-  disableAll() {
-    this.focusWatcher?.destroy()
-    this.namesWatcher?.destroy()
-    this.focusWatcher = null
-    this.namesWatcher = null
-    this.toast$.next(null)
-    this.tooltip$.next(null)
-  }
-
-  ngOnDestroy() { this.disableAll() }
-}
+const { FocusDebuggerService, NamesDebuggerService, DebugLauncherService } =
+  createServices({ DestroyRef, inject })
 ```
 
-Use in a component:
+Provide and inject in a root component:
 
 ```ts
 @Component({
-  selector: 'app-focus-toast',
-  template: `
-    <div *ngIf="debug.toast$ | async as toast" class="focus-toast" aria-hidden="true">
-      <code>{{ toast.label }}</code>
-      <span>:focus-visible {{ toast.isFocusVisible ? '✓' : '✗' }}</span>
-    </div>
-  `,
+  selector: 'app-root',
+  providers: [FocusDebuggerService, NamesDebuggerService, DebugLauncherService],
 })
-export class FocusToastComponent {
-  constructor(public debug: DebugService) {}
+export class AppComponent implements OnInit {
+  private focus   = inject(FocusDebuggerService)
+  private names   = inject(NamesDebuggerService)
+  private launcher = inject(DebugLauncherService)
+
+  ngOnInit() {
+    this.focus.enable()
+    this.launcher.enable({
+      onCommand: (cmd) => {
+        if (cmd === 'debug names')     this.names.enable()
+        if (cmd === 'debug names off') this.names.disable()
+      },
+    })
+  }
 }
-```
-
-Import `debug.css` in `angular.json` styles or your global stylesheet:
-
-```json
-"styles": ["node_modules/@a11yfred/rogers/debug.css", "src/styles.css"]
 ```
 
 ### Vanilla JS (script tag / no framework)
