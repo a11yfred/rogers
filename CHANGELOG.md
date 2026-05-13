@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1  -  2026-05-13
+
+Docs cleanup: remove em dashes, fix markdownlint issues, update package tree framing.
+
+---
+
 ## 0.2.0  -  2026-05-13
 
 ### Breaking change

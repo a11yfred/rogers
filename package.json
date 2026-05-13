@@ -1,6 +1,6 @@
 {
   "name": "@a11yfred/rogers",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Vanilla-first accessibility debug panel. Always look for the helpers.",
   "type": "module",
   "license": "MIT",
