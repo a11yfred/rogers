@@ -12,8 +12,8 @@ npm install --save-dev @a11yfred/rogers
 
 Rogers has two layers:
 
-- **Core** — plain JavaScript functions that watch the DOM. No framework needed.
-- **Adapters** — thin wrappers for React, Vue, Angular, and Remix that wire the core into your framework's lifecycle.
+- **Core:** plain JavaScript functions that watch the DOM. No framework needed.
+- **Adapters:** thin wrappers for React, Vue, Angular, and Remix that wire the core into your framework's lifecycle.
 
 Each adapter takes your framework's own hooks as parameters. Rogers never imports a framework itself, so it adds nothing to your bundle.
 
@@ -21,7 +21,7 @@ Each adapter takes your framework's own hooks as parameters. Rogers never import
 
 Rogers checks `globalThis.ROGERS_DEV` at startup. If it is not `true`, all functions return immediately and do nothing.
 
-Set it using a condition your build tool evaluates at build time — not a plain `true`. This ensures the flag is always `false` in a production bundle, even if someone forgets to remove the import.
+Set it using a condition your build tool evaluates at build time, not a plain `true`. This ensures the flag is always `false` in a production bundle, even if someone forgets to remove the import.
 
 ```js
 // Vite
@@ -34,7 +34,7 @@ if (process.env.NODE_ENV !== 'production') globalThis.ROGERS_DEV = true
 if (process.env.NODE_ENV === 'development') globalThis.ROGERS_DEV = true
 ```
 
-Do this once in your app entry point, before rogers is imported. Never write `globalThis.ROGERS_DEV = true` as a bare statement — a build tool cannot tree-shake a hardcoded `true`.
+Do this once in your app entry point, before rogers is imported. Never write `globalThis.ROGERS_DEV = true` as a bare statement. A build tool cannot tree-shake a hardcoded `true`.
 
 For a plain HTML demo or local prototype with no build step, a bare `true` is fine since there is no production build:
 
@@ -48,17 +48,17 @@ For a plain HTML demo or local prototype with no build step, a bare `true` is fi
 ```text
 @a11yfred/rogers
 ├── core/
-│   ├── focus.js      — focus tracking
-│   ├── names.js      — accessible name lookup
-│   ├── headings.js   — heading collection
-│   └── tabstops.js   — tab order
-├── overlay/          — DOM overlay renderers (no framework)
-├── index.js          — vanilla exports
-├── react.js          — React adapter
-├── vue.js            — Vue adapter
-├── angular.js        — Angular adapter
-├── remix3.js         — Remix 3 adapter
-└── debug.css         — styles for all overlays
+│   ├── focus.js      # focus tracking
+│   ├── names.js      # accessible name lookup
+│   ├── headings.js   # heading collection
+│   └── tabstops.js   # tab order
+├── overlay/          # DOM overlay renderers (no framework)
+├── index.js          # vanilla exports
+├── react.js          # React adapter
+├── vue.js            # Vue adapter
+├── angular.js        # Angular adapter
+├── remix3.js         # Remix 3 adapter
+└── debug.css         # styles for all overlays
 ```
 
 ## Demo

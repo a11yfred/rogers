@@ -16,7 +16,7 @@ For other build tools, set `globalThis.ROGERS_DEV = true` before importing roger
 
 ### Features
 
-- New toggle-based FAB (`DebugLauncher`) — on/off switches with all-on/all-off actions, replaces command-based rows
+- New toggle-based FAB (`DebugLauncher`): on/off switches with all-on/all-off actions, replaces command-based rows
 - `onToggle` API on `DebugLauncher`
 - Added `index.html` demo page
 - Fix: focus toast positioning corrected
