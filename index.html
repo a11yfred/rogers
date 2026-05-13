@@ -207,6 +207,7 @@
     .toggle-label {
       font-size: 0.88rem;
       font-weight: 600;
+      -webkit-user-select: none;
       user-select: none;
     }
     .toggle-desc {
@@ -313,7 +314,7 @@
         Empty aria-label
       </button>
     </div>
-    <span id="ext-label" style="display:none">External label text</span>
+    <span id="ext-label" hidden>External label text</span>
   </div>
 
   <!-- Heading structure section -->
@@ -339,7 +340,9 @@
       <button class="btn">Stop 1</button>
       <button class="btn">Stop 2</button>
       <button class="btn" tabindex="-1">tabindex="-1" (skipped)</button>
+      <!-- axe-linter-disable tabindex -- intentional demo of positive tabindex -->
       <button class="btn" tabindex="5">tabindex="5" (jumps ahead)</button>
+      <!-- axe-linter-enable tabindex -->
       <button class="btn">Stop 3</button>
       <a href="#">Stop 4 (link)</a>
       <input type="text" aria-label="Stop 5 input" placeholder="Stop 5" />
