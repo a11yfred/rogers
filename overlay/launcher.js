@@ -1,4 +1,4 @@
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 const POSITION_STYLES = {
   'bottom-right':  'bottom:1.25rem;right:1.25rem',
@@ -11,25 +11,11 @@ const POSITION_STYLES = {
   'middle-left':   'top:50%;left:1.25rem;transform:translateY(-50%)',
 }
 
-const STANDARD_SECTIONS = [
-  {
-    heading: 'A11y Testing',
-    rows: [
-      { cmd: 'debug all',       desc: 'All debug tools on' },
-      { cmd: 'debug all off',   desc: 'All debug tools off' },
-      { cmd: 'debug names',     desc: 'Name tooltips on' },
-      { cmd: 'debug names off', desc: 'Name tooltips off' },
-    ],
-  },
-  {
-    heading: 'Deploy Banner',
-    rows: [
-      { cmd: 'debug deploy off',     desc: 'Off' },
-      { cmd: 'debug deploy netlify', desc: 'Netlify' },
-      { cmd: 'debug deploy pages',   desc: 'GitHub Pages' },
-      { cmd: 'debug deploy vercel',  desc: 'Vercel' },
-    ],
-  },
+const STANDARD_TOOLS = [
+  { key: 'focus',    label: 'Focus watcher',  desc: 'Toast + flash on keyboard focus' },
+  { key: 'names',    label: 'Names tooltip',  desc: 'Accessible name on hover' },
+  { key: 'headings', label: 'Heading map',    desc: 'Outline overlay + panel' },
+  { key: 'tabstops', label: 'Tab stops',      desc: 'Tab order sequence overlay' },
 ]
 
 const FAB_SVG = `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -49,20 +35,25 @@ const INPUT_ICON_SVG = `<svg aria-hidden="true" width="14" height="14" viewBox="
 </svg>`
 
 /**
- * Mounts the debug launcher FAB + command menu as vanilla DOM.
+ * Mounts the debug launcher FAB + toggle menu as vanilla DOM.
  *
- * @param {{ position?: string, onCommand?: (cmd: string) => void, customSections?: Array }} options
- * @returns {{ destroy: () => void }}
+ * @param {{
+ *   position?: string,
+ *   onToggle?: (key: string, active: boolean) => void,
+ *   customTools?: Array<{ key: string, label: string, desc: string }>,
+ *   initialState?: Record<string, boolean>
+ * }} options
+ * @returns {{ destroy: () => void, setActive: (key: string, active: boolean) => void }}
  */
-export function mountDebugLauncher({ position = 'bottom-right', onCommand, customSections = [] } = {}) {
-  if (!IS_DEV) return { destroy() {} }
+export function mountDebugLauncher({ position = 'bottom-right', onToggle, customTools = [], initialState = {} } = {}) {
+  if (!IS_DEV) return { destroy() {}, setActive() {} }
 
   const posStyle = POSITION_STYLES[position] ?? POSITION_STYLES['bottom-right']
-  const allSections = [...STANDARD_SECTIONS, ...customSections]
+  const allTools = [...STANDARD_TOOLS, ...customTools]
 
   // ── State ──────────────────────────────────────────────────────────────────
-  let open      = false
-  let inputMode = false
+  let open = false
+  const active = Object.fromEntries(allTools.map(t => [t.key, initialState[t.key] ?? false]))
 
   // ── FAB ───────────────────────────────────────────────────────────────────
   const fab = document.createElement('button')
@@ -89,15 +80,23 @@ export function mountDebugLauncher({ position = 'bottom-right', onCommand, custo
   // ── Helpers ───────────────────────────────────────────────────────────────
   function close() {
     open = false
-    inputMode = false
     fab.setAttribute('aria-expanded', 'false')
     backdrop.style.display = 'none'
     menu.style.display = 'none'
   }
 
-  function fire(cmd) {
-    onCommand?.(cmd)
-    close()
+  function toggle(key) {
+    active[key] = !active[key]
+    onToggle?.(key, active[key])
+    renderMenu()
+  }
+
+  function toggleAll(on) {
+    allTools.forEach(t => {
+      active[t.key] = on
+      onToggle?.(t.key, on)
+    })
+    renderMenu()
   }
 
   function renderMenu() {
@@ -105,69 +104,43 @@ export function mountDebugLauncher({ position = 'bottom-right', onCommand, custo
     menu.style.display = ''
     fab.setAttribute('aria-expanded', 'true')
 
-    if (inputMode) {
-      menu.className = 'debug-fab-menu debug-fab-menu--input'
-      menu.innerHTML = `
-        <div class="debug-fab-menu__header">
-          <span class="debug-fab-menu__title">Command</span>
-          <button class="debug-fab-menu__close" aria-label="Back to menu">←</button>
-        </div>
-        <input class="debug-spotlight-input debug-fab-input" type="text" placeholder="debug …"
-          aria-label="Debug command input" autocomplete="off" spellcheck="false" />
-        <p class="debug-spotlight-hint">Type a command and press <code>Enter</code> — <code>Esc</code> to close</p>
-      `
-      const input = menu.querySelector('input')
-      input.focus()
+    const allOn  = allTools.every(t => active[t.key])
+    const allOff = allTools.every(t => !active[t.key])
 
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { const cmd = input.value.trim(); if (cmd) fire(cmd) }
-        if (e.key === 'Escape') close()
-      })
-
-      menu.querySelector('.debug-fab-menu__close').addEventListener('click', () => {
-        inputMode = false
-        renderMenu()
-      })
-    } else {
-      menu.className = 'debug-fab-menu'
-      menu.setAttribute('role', 'menu')
-      menu.innerHTML = `
-        <div class="debug-fab-menu__header">
-          <span class="debug-fab-menu__title">Debug</span>
-          <div class="debug-fab-menu__header-actions">
-            <button class="debug-fab-menu__icon-btn" aria-label="Open command input" title="Type a command  (/)">
-              ${INPUT_ICON_SVG}
+    menu.className = 'debug-fab-menu'
+    menu.setAttribute('role', 'menu')
+    menu.innerHTML = `
+      <div class="debug-fab-menu__header">
+        <span class="debug-fab-menu__title">Debug</span>
+        <button class="debug-fab-menu__close" aria-label="Close debug menu">✕</button>
+      </div>
+      <div class="debug-fab-menu__body">
+        <div class="debug-fab-menu__section">
+          <div class="debug-fab-menu__section-title">Tools</div>
+          ${allTools.map(tool => `
+            <button class="debug-fab-menu__row debug-fab-menu__row--toggle ${active[tool.key] ? 'debug-fab-menu__row--on' : ''}"
+              role="menuitemcheckbox" aria-checked="${active[tool.key]}" data-key="${tool.key}">
+              <span class="debug-fab-menu__toggle-indicator">${active[tool.key] ? '●' : '○'}</span>
+              <span class="debug-fab-menu__toggle-label">${tool.label}</span>
+              <span class="debug-fab-menu__desc">${tool.desc}</span>
             </button>
-            <button class="debug-fab-menu__close" aria-label="Close debug menu">✕</button>
-          </div>
-        </div>
-        <div class="debug-fab-menu__body">
-          ${allSections.map(section => `
-            <div class="debug-fab-menu__section">
-              <div class="debug-fab-menu__section-title">${section.heading}</div>
-              ${section.rows.map(row => `
-                <button class="debug-fab-menu__row" role="menuitem" data-cmd="${row.cmd}">
-                  <code class="debug-fab-menu__cmd">${row.cmd}</code>
-                  <span class="debug-fab-menu__desc">${row.desc}</span>
-                </button>
-              `).join('')}
-            </div>
           `).join('')}
-          <div class="debug-fab-menu__input-hint">Press <kbd>/</kbd> to type a command</div>
         </div>
-      `
+        <div class="debug-fab-menu__section debug-fab-menu__section--actions">
+          <button class="debug-fab-menu__action-btn" data-action="all-on" ${allOn ? 'disabled' : ''}>All on</button>
+          <button class="debug-fab-menu__action-btn" data-action="all-off" ${allOff ? 'disabled' : ''}>All off</button>
+        </div>
+      </div>
+    `
 
-      menu.querySelector('.debug-fab-menu__icon-btn').addEventListener('click', () => {
-        inputMode = true
-        renderMenu()
-      })
+    menu.querySelector('.debug-fab-menu__close').addEventListener('click', close)
 
-      menu.querySelector('.debug-fab-menu__close').addEventListener('click', close)
+    menu.querySelectorAll('[data-key]').forEach(btn => {
+      btn.addEventListener('click', () => toggle(btn.dataset.key))
+    })
 
-      menu.querySelectorAll('[data-cmd]').forEach(btn => {
-        btn.addEventListener('click', () => fire(btn.dataset.cmd))
-      })
-    }
+    menu.querySelector('[data-action="all-on"]').addEventListener('click', () => toggleAll(true))
+    menu.querySelector('[data-action="all-off"]').addEventListener('click', () => toggleAll(false))
   }
 
   // ── Event wiring ──────────────────────────────────────────────────────────
@@ -180,16 +153,15 @@ export function mountDebugLauncher({ position = 'bottom-right', onCommand, custo
   backdrop.addEventListener('click', close)
 
   const handleKeydown = (e) => {
-    if (e.key === 'Escape' && open) { close(); return }
-    if (e.key === '/' && open && !inputMode) {
-      e.preventDefault()
-      inputMode = true
-      renderMenu()
-    }
+    if (e.key === 'Escape' && open) close()
   }
   document.addEventListener('keydown', handleKeydown)
 
   return {
+    setActive(key, on) {
+      active[key] = on
+      if (open) renderMenu()
+    },
     destroy() {
       document.removeEventListener('keydown', handleKeydown)
       fab.remove()

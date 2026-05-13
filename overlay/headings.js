@@ -1,6 +1,6 @@
 import { createHeadingWatcher } from '../core/headings.js'
 
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 /**
  * Mounts the heading map overlay + panel DOM and wires a heading watcher.

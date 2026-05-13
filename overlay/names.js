@@ -1,6 +1,6 @@
 import { createNamesWatcher } from '../core/names.js'
 
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 /**
  * Mounts the names tooltip DOM node and wires a mouse watcher.

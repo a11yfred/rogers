@@ -1,7 +1,5 @@
 /* ─── Debug plugin — dev-only styles ───────────────────────────────────────
-   Guarded at build time: import.meta.env.DEV = false in production builds
-   causes Vite to eliminate all components that use these classes as dead code.
-   announce-toast styles live in announce/announce.css (plugin is self-contained).
+   Only active when globalThis.ROGERS_DEV is set to true.
    ─────────────────────────────────────────────────────────────────────── */
 
 /* Toast stack — shared container used by App.jsx to stack all dev toasts */
@@ -19,19 +17,18 @@
 }
 
 @keyframes toast-fade-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  to {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 /* KB focus toast */
 .focus-toast {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  pointer-events: none;
   background: #0e2040;
   color: #fff;
   font-size: 1rem;
@@ -45,6 +42,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.3em;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
 }
 
 .focus-toast--fading {
@@ -471,58 +469,68 @@
   color: #fff;
 }
 
-.debug-fab-menu__cmd {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: rgb(200 240 160);
-  white-space: nowrap;
-  background: rgb(255 255 255 / 0.06);
-  border-radius: 3px;
-  padding: 0.05em 0.3em;
-}
-
 .debug-fab-menu__desc {
   font-size: 0.75rem;
-  color: rgb(200 200 200 / 0.65);
+  color: rgb(200 200 200 / 0.45);
   flex: 1;
+  text-align: right;
 }
 
-.debug-fab-menu__header-actions {
-  display: flex;
+/* Toggle rows */
+.debug-fab-menu__row--toggle {
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.5rem;
 }
 
-.debug-fab-menu__icon-btn {
-  background: none;
-  border: none;
-  color: #888;
-  cursor: pointer;
-  padding: 0.2em 0.35em;
-  border-radius: 4px;
+.debug-fab-menu__toggle-indicator {
+  font-size: 0.65rem;
+  color: rgb(200 200 200 / 0.4);
+  flex-shrink: 0;
   line-height: 1;
-  display: flex;
-  align-items: center;
 }
 
-.debug-fab-menu__icon-btn:hover {
+.debug-fab-menu__row--on .debug-fab-menu__toggle-indicator {
+  color: rgb(130 240 160);
+}
+
+.debug-fab-menu__toggle-label {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #d0d0d0;
+}
+
+.debug-fab-menu__row--on .debug-fab-menu__toggle-label {
   color: #fff;
+}
+
+/* All on / All off action row */
+.debug-fab-menu__section--actions {
+  flex-direction: row;
+  gap: 0.4rem;
+  padding: 0.1rem 0.5rem 0.25rem;
+}
+
+.debug-fab-menu__action-btn {
+  flex: 1;
+  padding: 0.3em 0;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 5px;
+  color: rgb(200 200 200 / 0.7);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.debug-fab-menu__action-btn:hover:not([disabled]) {
   background: rgb(255 255 255 / 0.1);
+  color: #fff;
 }
 
-.debug-fab-menu__input-hint {
-  padding: 0.35rem 0.5rem 0.1rem;
-  font-size: 0.62rem;
-  color: rgb(255 255 255 / 0.25);
-  text-align: center;
-}
-
-.debug-fab-menu__input-hint kbd {
-  font-family: monospace;
-  background: rgb(255 255 255 / 0.08);
-  border-radius: 3px;
-  padding: 0 0.3em;
-  font-size: 0.95em;
+.debug-fab-menu__action-btn[disabled] {
+  opacity: 0.3;
+  cursor: default;
 }
 
 /* Input mode — tighter than full spotlight, lives inside the FAB menu */

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rogers — a11y debugger demo</title>
+  <link rel="stylesheet" href="./debug.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: #1d1d1f;
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+    }
+    .site-header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .site-header .tagline {
+      font-size: 0.85rem;
+      opacity: 0.55;
+    }
+
+    /* ── Layout ── */
+    .page {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.75rem;
+      box-shadow: 0 1px 4px rgb(0 0 0 / 0.08);
+    }
+    .card h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .card .subtitle {
+      margin: 0 0 1.25rem;
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    /* ── Focus section ── */
+    .focus-targets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .focus-targets a,
+    .focus-targets button,
+    .focus-targets input,
+    .focus-targets select {
+      font-size: 0.9rem;
+    }
+    .btn {
+      padding: 0.45em 1.1em;
+      border-radius: 6px;
+      border: 1.5px solid #d0d0d0;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn:hover { background: #f0f0f0; }
+    /* Intentionally missing focus style for demo purposes */
+    .btn--no-ring:focus { outline: none; }
+
+    /* ── Names / accessible names section ── */
+    .names-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+    }
+    .names-grid button,
+    .names-grid input,
+    .names-grid a {
+      width: 100%;
+    }
+    .names-grid .demo-icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.55em 1em;
+      border-radius: 6px;
+      border: 1.5px solid #d0d0d0;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    /* ── Headings section ── */
+    .bad-headings h1 { font-size: 1rem; }
+    .bad-headings h3 { font-size: 0.9rem; font-weight: 400; }
+
+    /* ── Overlays section ── */
+    .overlays-note {
+      font-size: 0.82rem;
+      color: #666;
+      background: #f5f5f7;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-top: 0.75rem;
+      line-height: 1.6;
+    }
+    .overlays-note code {
+      font-family: monospace;
+      background: #e8e8ed;
+      border-radius: 3px;
+      padding: 0.1em 0.3em;
+      font-size: 0.9em;
+    }
+
+    /* ── Form section ── */
+    .form-demo {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .field input {
+      padding: 0.5em 0.75em;
+      border: 1.5px solid #d0d0d0;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .field--unlabeled input {
+      /* intentionally no associated label for demo */
+    }
+
+    /* ── Toggle controls ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      width: fit-content;
+    }
+    .toggle-row input[type="checkbox"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 2.2rem;
+      height: 1.25rem;
+      border-radius: 999px;
+      background: #d0d0d0;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .toggle-row input[type="checkbox"]::after {
+      content: '';
+      position: absolute;
+      top: 0.175rem;
+      left: 0.2rem;
+      width: 0.9rem;
+      height: 0.9rem;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.15s;
+    }
+    .toggle-row input[type="checkbox"]:checked {
+      background: #1d1d1f;
+    }
+    .toggle-row input[type="checkbox"]:checked::after {
+      transform: translateX(0.95rem);
+    }
+    .toggle-row input[type="checkbox"]:focus-visible {
+      outline: 2px solid #1d1d1f;
+      outline-offset: 2px;
+    }
+    .toggle-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      user-select: none;
+    }
+    .toggle-desc {
+      font-size: 0.78rem;
+      color: #888;
+    }
+    .toggle-state {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #aaa;
+      min-width: 2rem;
+    }
+    .toggle-row input[type="checkbox"]:checked ~ .toggle-state {
+      color: #1d1d1f;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>rogers</h1>
+  <span class="tagline">@a11yfred/rogers — a11y debugger demo</span>
+</header>
+
+<main class="page">
+
+  <!-- Debug controls -->
+  <div class="card">
+    <h2>Debug Tools</h2>
+    <p class="subtitle">Toggle individual debuggers or use the FAB (bottom-right) for the full command menu.</p>
+    <div class="controls" id="controls">
+      <label class="toggle-row">
+        <input type="checkbox" data-tool="focus" />
+        <span class="toggle-label">Focus watcher</span>
+        <span class="toggle-desc">Toast + flash on keyboard focus</span>
+        <span class="toggle-state" aria-live="polite">Off</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" data-tool="names" />
+        <span class="toggle-label">Names tooltip</span>
+        <span class="toggle-desc">Accessible name on hover</span>
+        <span class="toggle-state" aria-live="polite">Off</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" data-tool="headings" />
+        <span class="toggle-label">Heading map</span>
+        <span class="toggle-desc">Outline overlay + panel</span>
+        <span class="toggle-state" aria-live="polite">Off</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" data-tool="tabstops" />
+        <span class="toggle-label">Tab stops</span>
+        <span class="toggle-desc">Tab order sequence overlay</span>
+        <span class="toggle-state" aria-live="polite">Off</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Focus debugger targets -->
+  <div class="card">
+    <h2>Focus Targets</h2>
+    <p class="subtitle">Tab through these to see the KB Focus toast. The button with no ring will show :focus-visible ✗.</p>
+    <div class="focus-targets">
+      <button class="btn">Normal button</button>
+      <button class="btn btn--no-ring">No focus ring</button>
+      <a href="#">Link</a>
+      <input type="text" placeholder="Text input" aria-label="Demo text input" />
+      <select aria-label="Demo select">
+        <option>Option A</option>
+        <option>Option B</option>
+      </select>
+      <button class="btn" disabled>Disabled</button>
+    </div>
+  </div>
+
+  <!-- Names debugger targets -->
+  <div class="card">
+    <h2>Accessible Names</h2>
+    <p class="subtitle">Hover elements (names mode on) to inspect how each gets its accessible name.</p>
+    <div class="names-grid">
+      <button class="demo-icon-btn" aria-label="Settings">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/>
+        </svg>
+        <span>aria-label</span>
+      </button>
+      <button class="demo-icon-btn">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M5 7h6M5 10h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Content text
+      </button>
+      <input type="search" placeholder="via placeholder only" />
+      <input type="text" aria-labelledby="ext-label" placeholder="via aria-labelledby" />
+      <a href="#" title="Tooltip link (title attr)">title attr link</a>
+      <button class="demo-icon-btn" aria-label="">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Empty aria-label
+      </button>
+    </div>
+    <span id="ext-label" style="display:none">External label text</span>
+  </div>
+
+  <!-- Heading structure section -->
+  <div class="card">
+    <h2>Heading Structure</h2>
+    <p class="subtitle">The heading map overlay will highlight the document outline. This section has intentional gaps.</p>
+    <div class="bad-headings">
+      <h1>Fake H1 inside the page</h1>
+      <p>Some content under the fake H1.</p>
+      <!-- H2 intentionally skipped -->
+      <h3>Jumped straight to H3</h3>
+      <p>This skips H2, which is a heading order issue the heading-map debugger will surface.</p>
+      <h2>Back to H2</h2>
+      <p>Then we recover. The outline panel on the right will show the full map.</p>
+    </div>
+  </div>
+
+  <!-- Tab stop targets -->
+  <div class="card">
+    <h2>Tab Stop Sequence</h2>
+    <p class="subtitle">Enable tab stops, then Tab through the page. Numbered badges appear in focus order.</p>
+    <div class="focus-targets">
+      <button class="btn">Stop 1</button>
+      <button class="btn">Stop 2</button>
+      <button class="btn" tabindex="-1">tabindex="-1" (skipped)</button>
+      <button class="btn" tabindex="5">tabindex="5" (jumps ahead)</button>
+      <button class="btn">Stop 3</button>
+      <a href="#">Stop 4 (link)</a>
+      <input type="text" aria-label="Stop 5 input" placeholder="Stop 5" />
+    </div>
+  </div>
+
+  <!-- Form with label issues -->
+  <div class="card">
+    <h2>Form Labels</h2>
+    <p class="subtitle">Hover fields with the names debugger on to see which have proper labels vs. relying on placeholder.</p>
+    <form class="form-demo" onsubmit="return false">
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" type="text" placeholder="Jane Doe" />
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="jane@example.com" />
+      </div>
+      <div class="field field--unlabeled">
+        <!-- No label — only placeholder -->
+        <input type="text" placeholder="No label (placeholder only)" />
+      </div>
+      <div class="field">
+        <label for="role">Role</label>
+        <select id="role">
+          <option>Designer</option>
+          <option>Developer</option>
+          <option>PM</option>
+        </select>
+      </div>
+      <button class="btn" type="submit">Submit</button>
+    </form>
+  </div>
+
+</main>
+
+<script>globalThis.ROGERS_DEV = true</script>
+<script type="module">
+  import { mountFocusDebugger }      from './overlay/focus.js'
+  import { mountNamesDebugger }      from './overlay/names.js'
+  import { mountHeadingMapDebugger } from './overlay/headings.js'
+  import { mountTabStopsDebugger }   from './overlay/tabstops.js'
+  import { mountDebugLauncher }      from './overlay/launcher.js'
+
+  const instances = {
+    focus:    null,
+    names:    null,
+    headings: null,
+    tabstops: null,
+  }
+
+  const mounts = {
+    focus:    mountFocusDebugger,
+    names:    mountNamesDebugger,
+    headings: mountHeadingMapDebugger,
+    tabstops: mountTabStopsDebugger,
+  }
+
+  let launcher = null
+
+  function setTool(key, on) {
+    if (on && !instances[key]) {
+      instances[key] = mounts[key]()
+    } else if (!on && instances[key]) {
+      instances[key].destroy()
+      instances[key] = null
+    }
+    const checkbox = document.querySelector(`input[data-tool="${key}"]`)
+    if (checkbox) {
+      checkbox.checked = on
+      const stateEl = checkbox.closest('.toggle-row')?.querySelector('.toggle-state')
+      if (stateEl) stateEl.textContent = on ? 'On' : 'Off'
+    }
+    launcher?.setActive(key, on)
+  }
+
+  document.querySelectorAll('input[data-tool]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => setTool(checkbox.dataset.tool, checkbox.checked))
+  })
+
+  launcher = mountDebugLauncher({
+    position: 'bottom-right',
+    onToggle(key, on) {
+      setTool(key, on)
+    },
+  })
+
+</script>
+
+</body>
+</html>

@@ -13,6 +13,9 @@
     "url": "https://github.com/a11yfred/rogers/issues"
   },
   "keywords": ["accessibility", "a11y", "debug", "devtools", "react", "vue", "angular", "remix", "vanilla", "a11yfred"],
+  "scripts": {
+    "demo": "npx serve ."
+  },
   "files": ["core", "overlay", "*.js", "debug.css", "LICENSE", "README.md"],
   "exports": {
     ".":          "./index.js",

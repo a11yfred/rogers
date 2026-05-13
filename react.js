@@ -6,7 +6,7 @@ import { mountDebugLauncher }      from './overlay/launcher.js'
 import { mountDebugHelp }          from './overlay/help.js'
 import { mountDeployBanner }       from './overlay/banner.js'
 
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 // React is passed in by the caller — no top-level React import.
 // Usage: import { createComponents } from '@a11yfred/rogers/react'

@@ -1,6 +1,6 @@
 # @a11yfred/rogers
 
-Rogers is an accessibility debug panel for testing and development. Drop it into any project to see keyboard focus, accessible names, heading structure, and tab order in real time. No framework required, no dependencies needed. It works with React, Vue, Angular, and Remix. Rogers only runs in development and does nothing in production. More planned soon.
+Rogers is an accessibility debug tool for testing and development. Drop it into any project to see keyboard focus, accessible names, heading structure, and tab order in real time. No framework required, no dependencies.
 
 ## Install
 
@@ -17,7 +17,31 @@ Rogers has two layers:
 
 Each adapter takes your framework's own hooks as parameters. Rogers never imports a framework itself, so it adds nothing to your bundle.
 
-All watcher functions check `import.meta.env.DEV` at startup. In a production build they return immediately and do nothing.
+## Enabling rogers
+
+Rogers checks `globalThis.ROGERS_DEV` at startup. If it is not `true`, all functions return immediately and do nothing.
+
+Set it using a condition your build tool evaluates at build time — not a plain `true`. This ensures the flag is always `false` in a production bundle, even if someone forgets to remove the import.
+
+```js
+// Vite
+if (import.meta.env.DEV) globalThis.ROGERS_DEV = true
+
+// webpack / CRA
+if (process.env.NODE_ENV !== 'production') globalThis.ROGERS_DEV = true
+
+// Remix / Next.js
+if (process.env.NODE_ENV === 'development') globalThis.ROGERS_DEV = true
+```
+
+Do this once in your app entry point, before rogers is imported. Never write `globalThis.ROGERS_DEV = true` as a bare statement — a build tool cannot tree-shake a hardcoded `true`.
+
+For a plain HTML demo or local prototype with no build step, a bare `true` is fine since there is no production build:
+
+```html
+<script>globalThis.ROGERS_DEV = true</script>
+<script type="module" src="./your-app.js"></script>
+```
 
 ## File structure
 
@@ -30,12 +54,22 @@ All watcher functions check `import.meta.env.DEV` at startup. In a production bu
 │   └── tabstops.js   — tab order
 ├── overlay/          — DOM overlay renderers (no framework)
 ├── index.js          — vanilla exports
-├── react.js          — React / Remix 2 adapter
+├── react.js          — React adapter
 ├── vue.js            — Vue adapter
 ├── angular.js        — Angular adapter
-├── remix3.js         — Remix 3 / vanilla adapter
+├── remix3.js         — Remix 3 adapter
 └── debug.css         — styles for all overlays
 ```
+
+## Demo
+
+Run the demo locally with no install required:
+
+```bash
+npm run demo
+```
+
+Then open `http://localhost:3000`. The demo shows all four debug tools running on a page with intentional accessibility issues to inspect.
 
 ## Framework integration
 
@@ -45,64 +79,64 @@ Import `debug.css` once in your app entry point.
 import '@a11yfred/rogers/debug.css'
 ```
 
-### React / Remix 2
+### Vanilla JS
+
+```js
+import {
+  mountFocusDebugger, mountNamesDebugger,
+  mountHeadingMapDebugger, mountTabStopsDebugger,
+  mountDebugLauncher,
+} from '@a11yfred/rogers'
+import '@a11yfred/rogers/debug.css'
+
+const state = { focus: null, names: null, headings: null, tabstops: null }
+
+const launcher = mountDebugLauncher({
+  onToggle(key, on) {
+    if (on && !state[key])  state[key] = mount(key)
+    if (!on && state[key]) { state[key].destroy(); state[key] = null }
+  },
+})
+
+function mount(key) {
+  if (key === 'focus')    return mountFocusDebugger()
+  if (key === 'names')    return mountNamesDebugger()
+  if (key === 'headings') return mountHeadingMapDebugger()
+  if (key === 'tabstops') return mountTabStopsDebugger()
+}
+```
+
+### React
 
 ```jsx
 import { useState, useEffect, useRef } from 'react'
 import { createComponents } from '@a11yfred/rogers/react'
+import '@a11yfred/rogers/debug.css'
 
 const {
-  FocusDebugger, NamesDebugger, DeployBanner,
-  DebugLauncher, DebugHelp, TabStopsDebugger, HeadingMapDebugger,
+  FocusDebugger, NamesDebugger, HeadingMapDebugger,
+  TabStopsDebugger, DebugLauncher,
 } = createComponents({ useEffect, useRef })
 
 export default function Root() {
-  const [debugFocus, setDebugFocus] = useState(false)
-  const [debugNames, setDebugNames] = useState(false)
+  const [active, setActive] = useState({
+    focus: false, names: false, headings: false, tabstops: false,
+  })
+
+  function handleToggle(key, on) {
+    setActive(prev => ({ ...prev, [key]: on }))
+  }
 
   return (
     <>
       <Outlet />
-      <FocusDebugger enabled={debugFocus} />
-      <NamesDebugger enabled={debugNames} />
-      <DeployBanner target="netlify" />
-      <DebugLauncher
-        enabled
-        onCommand={(cmd) => {
-          if (cmd === 'debug names')     setDebugNames(true)
-          if (cmd === 'debug names off') setDebugNames(false)
-          if (cmd === 'debug all')       { setDebugFocus(true); setDebugNames(true) }
-          if (cmd === 'debug all off')   { setDebugFocus(false); setDebugNames(false) }
-        }}
-      />
+      <FocusDebugger    enabled={active.focus} />
+      <NamesDebugger    enabled={active.names} />
+      <HeadingMapDebugger enabled={active.headings} />
+      <TabStopsDebugger enabled={active.tabstops} />
+      <DebugLauncher    enabled onToggle={handleToggle} />
     </>
   )
-}
-```
-
-### Remix 3
-
-Remix 3 does not require React. Use the vanilla adapter in your client entry point.
-
-```js
-// app/entry.client.js
-import { rogers } from '@a11yfred/rogers/remix3'
-import '@a11yfred/rogers/debug.css'
-
-const debug = rogers({
-  focus:    true,
-  names:    true,
-  deploy:   'netlify',
-  launcher: {
-    onCommand(cmd) {
-      // handle commands via your own state
-    },
-  },
-})
-
-// HMR cleanup
-if (import.meta.hot) {
-  import.meta.hot.dispose(() => debug.destroy())
 }
 ```
 
@@ -123,17 +157,13 @@ In a component:
 <script setup>
 import { ref } from 'vue'
 
-const focusEnabled = ref(true)
-const namesEnabled = ref(false)
+const active = ref({ focus: false, names: false, headings: false, tabstops: false })
 
-useFocusDebugger(focusEnabled)
-useNamesDebugger(namesEnabled)
+useFocusDebugger(computed(() => active.value.focus))
+useNamesDebugger(computed(() => active.value.names))
 useDebugLauncher({
   enabled: ref(true),
-  onCommand(cmd) {
-    if (cmd === 'debug names')     namesEnabled.value = true
-    if (cmd === 'debug names off') namesEnabled.value = false
-  },
+  onToggle(key, on) { active.value = { ...active.value, [key]: on } },
 })
 </script>
 ```
@@ -161,37 +191,38 @@ export class AppComponent implements OnInit {
   private launcher = inject(DebugLauncherService)
 
   ngOnInit() {
-    this.focus.enable()
     this.launcher.enable({
-      onCommand: (cmd) => {
-        if (cmd === 'debug names')     this.names.enable()
-        if (cmd === 'debug names off') this.names.disable()
+      onToggle: (key, on) => {
+        if (key === 'focus') on ? this.focus.enable() : this.focus.disable()
+        if (key === 'names') on ? this.names.enable() : this.names.disable()
       },
     })
   }
 }
 ```
 
-### Vanilla JS
+### Remix 3
 
 ```js
-import { createFocusWatcher, createNamesWatcher } from '@a11yfred/rogers'
+// app/entry.client.js
+import { rogers } from '@a11yfred/rogers/remix3'
+import '@a11yfred/rogers/debug.css'
 
-const focus = createFocusWatcher(({ label, isFocusVisible }) => {
-  console.log(`[focus] ${label} | :focus-visible ${isFocusVisible ? '✓' : '✗'}`)
+const debug = rogers({
+  onToggle(key, on) {
+    // handle tool state via your own state management
+  },
 })
 
-const names = createNamesWatcher(
-  ({ name, source }) => console.log(`[name] ${name} (${source})`),
-  () => {},
-)
-
-// Clean up when done
-focus.destroy()
-names.destroy()
+// HMR cleanup
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => debug.destroy())
+}
 ```
 
 ## Vanilla API
+
+### Core
 
 | Export | Description |
 | ------ | ----------- |
@@ -208,35 +239,32 @@ names.destroy()
 | `isTabbable(el)` | Returns true if the element is in the tab order |
 | `getTabOrder()` | Returns all tabbable elements in order |
 
-## React components
+### Overlays
 
-These are returned by `createComponents({ useEffect, useRef })`.
+| Export | Description |
+| ------ | ----------- |
+| `mountFocusDebugger()` | Toast + element flash on keyboard focus |
+| `mountNamesDebugger()` | Tooltip showing accessible name on hover |
+| `mountHeadingMapDebugger()` | Overlay + panel showing heading structure |
+| `mountTabStopsDebugger()` | Numbered overlay showing tab order |
+| `mountDebugLauncher(options)` | Floating button with toggle menu |
+| `mountDebugHelp(options)` | Full command reference panel |
+| `mountDeployBanner(target)` | Fixed banner showing deployment target |
 
-| Component | Description |
-| --------- | ----------- |
-| `FocusDebugger` | Shows a toast and flashes the element on every focus event |
-| `NamesDebugger` | Shows a tooltip with the accessible name of the hovered element |
-| `TabStopsDebugger` | Numbered overlay showing the tab order |
-| `HeadingMapDebugger` | Overlay showing heading structure |
-| `DeployBanner` | Fixed banner showing the active deployment target |
-| `DebugHelp` | Full command reference panel |
-| `DebugLauncher` | Floating button and command input |
+### mountDebugLauncher options
 
-## Debug commands
+| Option | Type | Description |
+| ------ | ---- | ----------- |
+| `position` | `string` | FAB position. One of `bottom-right`, `bottom-left`, `bottom-center`, `top-right`, `top-left`, `top-center`, `middle-right`, `middle-left`. Default: `bottom-right` |
+| `onToggle` | `(key, on) => void` | Called when a tool is toggled. `key` is one of `focus`, `names`, `headings`, `tabstops` |
+| `customTools` | `Array` | Additional tools to show in the menu. Each item: `{ key, label, desc }` |
+| `initialState` | `Record<string, boolean>` | Initial active state per tool key |
 
-These work in the `DebugLauncher` command input.
-
-| Command | Effect |
-| ------- | ------ |
-| `debug help` | Show the command reference panel |
-| `debug all on` | Enable focus and names |
-| `debug all off` | Disable focus and names |
-| `debug names on` | Show accessible name tooltip |
-| `debug names off` | Hide accessible name tooltip |
+Returns `{ setActive(key, on), destroy() }`.
 
 ## CSS
 
-Import `debug.css` once. It covers all components and overlays. The styles are self-contained and work regardless of your app's theme.
+Import `debug.css` once. It covers all overlays and is self-contained.
 
 ## License
 

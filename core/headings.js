@@ -1,4 +1,4 @@
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 const LEVEL_COLORS = {
   H1: 'rgb(255 100 100)',

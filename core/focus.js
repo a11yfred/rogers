@@ -1,4 +1,4 @@
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 const SKIP_CLASSES = new Set(['sr-only'])
 

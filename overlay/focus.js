@@ -1,6 +1,6 @@
 import { createFocusWatcher } from '../core/focus.js'
 
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = !!globalThis.ROGERS_DEV
 
 /**
  * Mounts the focus toast DOM node and wires a focusin watcher.
